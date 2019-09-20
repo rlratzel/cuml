@@ -141,11 +141,14 @@ class AccuracyComparisonRunner(SpeedupComparisonRunner):
         print("-------- data type: ", data[0].__class__)
         X_test, y_test = data[2:]
 
+        # rlr
+        gpuPollObj = startGpuMetricPolling()
         cu_start = time.time()
         cuml_model = algo_pair.run_cuml(
             data, **{**param_overrides, **cuml_param_overrides}
         )
         cu_elapsed = time.time() - cu_start
+        stopGpuMetricPolling(gpuPollObj)
 
         if algo_pair.accuracy_function:
             if hasattr(cuml_model, 'predict'):
@@ -176,6 +179,8 @@ class AccuracyComparisonRunner(SpeedupComparisonRunner):
             cpu_elapsed = 0.0
 
         return dict(
+            maxGpuMemUsed=gpuPollObj.maxGpuMemUsed,
+            maxGpuUtil=gpuPollObj.maxGpuUtil,
             cu_time=cu_elapsed,
             cpu_time=cpu_elapsed,
             cuml_acc=cuml_accuracy,
@@ -248,3 +253,53 @@ def run_variations(
     print(results_df)
 
     return results_df
+
+
+
+# RLR
+import time
+import threading
+from pynvml import smi
+
+class GPUMetricPoller(threading.Thread):
+    def __init__(self, *args, **kwargs):
+        self.__stop = False
+        super().__init__(*args, **kwargs)
+        self.maxGpuUtil = 0
+        self.maxGpuMemUsed = 0
+
+    def run(self):
+        smi.nvmlInit()
+        devObj = smi.nvmlDeviceGetHandleByIndex(0)  # hack - get actual device ID somehow
+        memObj = smi.nvmlDeviceGetMemoryInfo(devObj)
+        utilObj = smi.nvmlDeviceGetUtilizationRates(devObj)
+        initialMemUsed = memObj.used
+        initialGpuUtil = utilObj.gpu
+
+        while not self.__stop:
+            time.sleep(0.01)
+
+            memObj = smi.nvmlDeviceGetMemoryInfo(devObj)
+            utilObj = smi.nvmlDeviceGetUtilizationRates(devObj)
+
+            memUsed = memObj.used - initialMemUsed
+            gpuUtil = utilObj.gpu - initialGpuUtil
+            if memUsed > self.maxGpuMemUsed:
+                self.maxGpuMemUsed = memUsed
+            if gpuUtil > self.maxGpuUtil:
+                self.maxGpuUtil = gpuUtil
+
+        smi.nvmlShutdown()
+
+    def stop(self):
+        self.__stop = True
+
+
+def startGpuMetricPolling():
+    gpuPollObj = GPUMetricPoller()
+    gpuPollObj.start()
+    return gpuPollObj
+
+def stopGpuMetricPolling(gpuPollObj):
+    gpuPollObj.stop()
+    gpuPollObj.join()  # consider using timeout and reporting errors

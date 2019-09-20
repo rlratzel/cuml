@@ -50,6 +50,8 @@ def report_asv(results_df, output_dir):
     uname = platform.uname()
     (commitHash, commitTime) = asvdb.utils.getCommitInfo()
 
+    commitHash = "90fa82304da4243375642a74886dc26ceef43a8b"
+
     b_info = asvdb.BenchmarkInfo(
         machineName=uname.machine,
         cudaVer="10.0",
@@ -67,15 +69,22 @@ def report_asv(results_df, output_dir):
         branch,
     ) = asvdb.utils.getRepoInfo()  # gets repo info from CWD by default
 
+    branch="branch-0.10"
+
     db = asvdb.ASVDb(dbDir=output_dir, repo=repo, branches=[branch])
 
     for index, row in results_df.iterrows():
-        val_keys = ['cu_time', 'cpu_time', 'speedup', 'cuml_acc', 'cpu_acc']
+        val_keys = ['algo', 'cu_time', 'cpu_time', 'speedup', 'cuml_acc', 'cpu_acc']
         params = [(k, v) for k, v in row.items() if k not in val_keys]
-        result = asvdb.BenchmarkResult(
-            row['algo'], params, result=row['cu_time']
-        )
-        db.addResult(b_info, result)
+        algoName = row["algo"]
+        for (metricName, result, unit) in [("runtime", row["cu_time"], "seconds"),
+                                           ("memUsed", row["maxGpuMemUsed"], "bytes"),
+                                           ("gpuUtil", row["maxGpuUtil"], "percent"),
+                                           ]:
+            result = asvdb.BenchmarkResult("%s_%s" % (row['algo'], metricName),
+                                           params, result)
+            result.unit = unit
+            db.addResult(b_info, result)
 
 
 def make_bench_configs(long_config):
@@ -101,6 +110,20 @@ def make_bench_configs(long_config):
         ("KMeans", "blobs", small_rows, default_dims, [{}]),
         ("DBScan", "blobs", small_rows, default_dims, [{}]),
         ("TSNE", "blobs", small_rows, default_dims, [{}]),
+        ("NearestNeighbors", "blobs", small_rows, default_dims, [{}]),
+        ("MBSGDClassifier", "blobs", large_rows, default_dims, [{}]),
+        ("LogisticRegression", "classification", large_rows, default_dims,
+         [{}]),
+        ("LinearRegression", "regression", large_rows, default_dims, [{}]),
+        ("Lasso", "regression", large_rows, default_dims, [{}]),
+        ("ElasticNet", "regression", large_rows, default_dims, [{}]),
+        ("PCA", "blobs", large_rows, [32, 256],
+         expand_params("n_components", [2, 25])),
+        ("tSVD", "blobs", large_rows, [32, 256],
+         expand_params("n_components", [2, 25]),),
+    ]
+    algo_defs = [
+        ("KMeans", "blobs", small_rows, default_dims, [{}]),
         ("NearestNeighbors", "blobs", small_rows, default_dims, [{}]),
         ("MBSGDClassifier", "blobs", large_rows, default_dims, [{}]),
         ("LogisticRegression", "classification", large_rows, default_dims,
