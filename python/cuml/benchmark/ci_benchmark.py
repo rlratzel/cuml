@@ -121,6 +121,8 @@ def make_bench_configs(long_config):
          expand_params("n_components", [2, 25])),
         ("tSVD", "blobs", large_rows, [32, 256],
          expand_params("n_components", [2, 25]),),
+        ("GaussianRandomProjection", "blobs", large_rows, [32, 256],
+         expand_params("n_components", [2, 25]),),
     ]
     algo_defs = [
         ("KMeans", "blobs", small_rows, default_dims, [{}]),

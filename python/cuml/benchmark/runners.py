@@ -138,7 +138,6 @@ class AccuracyComparisonRunner(SpeedupComparisonRunner):
             n_features,
             test_fraction=self.test_fraction,
         )
-        print("-------- data type: ", data[0].__class__)
         X_test, y_test = data[2:]
 
         # rlr
@@ -148,8 +147,11 @@ class AccuracyComparisonRunner(SpeedupComparisonRunner):
             data, **{**param_overrides, **cuml_param_overrides}
         )
         cu_elapsed = time.time() - cu_start
+<<<<<<< HEAD
         stopGpuMetricPolling(gpuPollObj)
 
+=======
+>>>>>>> upstream/branch-0.10
         if algo_pair.accuracy_function:
             if hasattr(cuml_model, 'predict'):
                 y_pred_cuml = cuml_model.predict(X_test)
