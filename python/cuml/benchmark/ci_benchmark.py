@@ -74,7 +74,7 @@ def report_asv(results_df, output_dir):
     db = asvdb.ASVDb(dbDir=output_dir, repo=repo, branches=[branch])
 
     for index, row in results_df.iterrows():
-        val_keys = ['algo', 'cu_time', 'cpu_time', 'speedup', 'cuml_acc', 'cpu_acc']
+        val_keys = ['algo', 'cu_time', 'cpu_time', 'speedup', 'cuml_acc', 'cpu_acc', 'maxGpuMemUsed', 'maxGpuUtil']
         params = [(k, v) for k, v in row.items() if k not in val_keys]
         algoName = row["algo"]
         for (metricName, result, unit) in [("runtime", row["cu_time"], "seconds"),
