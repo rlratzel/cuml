@@ -147,11 +147,8 @@ class AccuracyComparisonRunner(SpeedupComparisonRunner):
             data, **{**param_overrides, **cuml_param_overrides}
         )
         cu_elapsed = time.time() - cu_start
-<<<<<<< HEAD
         stopGpuMetricPolling(gpuPollObj)
 
-=======
->>>>>>> upstream/branch-0.10
         if algo_pair.accuracy_function:
             if hasattr(cuml_model, 'predict'):
                 y_pred_cuml = cuml_model.predict(X_test)
