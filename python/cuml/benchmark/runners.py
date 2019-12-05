@@ -16,6 +16,8 @@
 """Wrappers to run ML benchmarks"""
 
 from cuml.benchmark import datagen
+from cuml.benchmark.gpu_metric_poller import (startGpuMetricPolling,
+                                              stopGpuMetricPolling)
 import time
 import numpy as np
 import pandas as pd
@@ -34,6 +36,8 @@ class BenchmarkTimer:
     def __init__(self, reps=1):
         self.reps = reps
         self.timings = []
+        self.gpuUtils = []
+        self.gpuMaxMemUsage = []
 
     def benchmark_runs(self):
         for r in range(self.reps):
@@ -41,6 +45,27 @@ class BenchmarkTimer:
             yield r
             t1 = time.time()
             self.timings.append(t1 - t0)
+
+
+class GPUBenchmarkTimer(BenchmarkTimer):
+    """BenchmarkTimer with GPU metrics
+    """
+
+    def __init__(self, reps=1):
+        super().__init__(reps)
+        self.gpuUtils = []
+        self.gpuMaxMemUsage = []
+
+    def benchmark_runs(self):
+        for r in range(self.reps):
+            gpuPollObj = startGpuMetricPolling()
+            t0 = time.time()
+            yield r
+            t1 = time.time()
+            stopGpuMetricPolling(gpuPollObj)
+            self.timings.append(t1 - t0)
+            self.gpuUtils.append(gpuPollObj.maxGpuUtil)
+            self.gpuMaxMemUsage.append(gpuPollObj.maxGpuMemUsed)
 
 
 class SpeedupComparisonRunner:
@@ -197,13 +222,16 @@ class AccuracyComparisonRunner(SpeedupComparisonRunner):
             data, **{**param_overrides, **cuml_param_overrides}
         )
 
-        cuml_timer = BenchmarkTimer(self.n_reps)
+        cuml_timer = GPUBenchmarkTimer(self.n_reps)
         for _ in cuml_timer.benchmark_runs():
             cuml_model = algo_pair.run_cuml(
                 data,
                 **{**param_overrides, **cuml_param_overrides, **setup_override}
             )
         cu_elapsed = np.min(cuml_timer.timings)
+        cu_gpuUtil = np.average(cuml_timer.gpuUtils)
+        cu_gpuMem = np.average(cuml_timer.gpuMaxMemUsage)
+
 
         if algo_pair.accuracy_function:
             if algo_pair.cuml_data_prep_hook is not None:
@@ -253,6 +281,8 @@ class AccuracyComparisonRunner(SpeedupComparisonRunner):
             cuml_acc=cuml_accuracy,
             cpu_acc=cpu_accuracy,
             speedup=cpu_elapsed / float(cu_elapsed),
+            cu_gpuUtil=cu_gpuUtil,
+            cu_gpuMem=cu_gpuMem,
             n_samples=n_samples,
             n_features=n_features,
             **param_overrides,

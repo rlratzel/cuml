@@ -72,12 +72,21 @@ def report_asv(results_df, output_dir,
     db = asvdb.ASVDb(dbDir=output_dir, repo=repo, branches=[branch])
 
     for index, row in results_df.iterrows():
-        val_keys = ['cu_time', 'cpu_time', 'speedup', 'cuml_acc', 'cpu_acc']
-        params = [(k, v) for k, v in row.items() if k not in val_keys]
-        result = asvdb.BenchmarkResult(
-            row['algo'], params, result=row['cu_time']
-        )
-        db.addResult(b_info, result)
+        keysToOmit = ['cu_time', 'cpu_time', 'speedup', 'cuml_acc',
+                      'cpu_acc', 'cu_gpuUtil', 'cu_gpuMem']
+        params = [(k, v) for k, v in row.items() if k not in keysToOmit]
+
+        results = [("cuml.%s_time" % row['algo'], row['cu_time'])]
+        if 'cu_gpuUtil' in row:
+            results.append(("cuml.%s_gpuutil" % row['algo'], row['cu_gpuUtil']))
+        if 'cu_gpuMem' in row:
+            results.append(("cuml.%s_gpumem" % row['algo'], row['cu_gpuMem']))
+
+        for (name, value) in results.items():
+            result = asvdb.BenchmarkResult(
+                name, params, result=value
+            )
+            db.addResult(b_info, result)
 
 
 def make_bench_configs(long_config):
