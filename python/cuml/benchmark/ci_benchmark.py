@@ -76,16 +76,17 @@ def report_asv(results_df, output_dir,
                       'cuml_acc', 'cpu_acc', 'cu_gpuUtil', 'cu_gpuMem']
         params = [(k, v) for k, v in row.items() if k not in keysToOmit]
 
-        results = [("cuml.%s_time" % row['algo'], row['cu_time'])]
+        results = [("cuml.%s_time" % row['algo'], row['cu_time'], "seconds")]
         if 'cu_gpuUtil' in row:
-            results.append(("cuml.%s_gpuutil" % row['algo'], row['cu_gpuUtil']))
+            results.append(("cuml.%s_gpuutil" % row['algo'], row['cu_gpuUtil'], "percent"))
         if 'cu_gpuMem' in row:
-            results.append(("cuml.%s_gpumem" % row['algo'], row['cu_gpuMem']))
+            results.append(("cuml.%s_gpumem" % row['algo'], row['cu_gpuMem'], "bytes"))
 
-        for (name, value) in results:
+        for (name, value, unit) in results:
             result = asvdb.BenchmarkResult(
                 name, params, result=value
             )
+            result.unit = unit
             db.addResult(b_info, result)
 
 
