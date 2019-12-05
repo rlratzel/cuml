@@ -72,8 +72,8 @@ def report_asv(results_df, output_dir,
     db = asvdb.ASVDb(dbDir=output_dir, repo=repo, branches=[branch])
 
     for index, row in results_df.iterrows():
-        keysToOmit = ['cu_time', 'cpu_time', 'speedup', 'cuml_acc',
-                      'cpu_acc', 'cu_gpuUtil', 'cu_gpuMem']
+        keysToOmit = ['algo', 'cu_time', 'cpu_time', 'speedup',
+                      'cuml_acc', 'cpu_acc', 'cu_gpuUtil', 'cu_gpuMem']
         params = [(k, v) for k, v in row.items() if k not in keysToOmit]
 
         results = [("cuml.%s_time" % row['algo'], row['cu_time'])]
@@ -82,7 +82,7 @@ def report_asv(results_df, output_dir,
         if 'cu_gpuMem' in row:
             results.append(("cuml.%s_gpumem" % row['algo'], row['cu_gpuMem']))
 
-        for (name, value) in results.items():
+        for (name, value) in results:
             result = asvdb.BenchmarkResult(
                 name, params, result=value
             )
